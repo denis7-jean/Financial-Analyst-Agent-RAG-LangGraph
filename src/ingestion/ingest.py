@@ -10,7 +10,7 @@ from langchain_openai import OpenAIEmbeddings
 
 
 def ingest_pdf(
-    pdf_path: str = "data/sample_10k.pdf",
+    pdf_path: str = "data/APPL_10k.pdf",
     persist_directory: str = "./vector_db",
     collection_name: str = "10k_filings",
 ):
@@ -59,3 +59,4 @@ def ingest_pdf(
 if __name__ == "__main__":
     added = ingest_pdf()
     print(f"Ingestion Complete! [{added}] chunks added to ChromaDB.")
+
