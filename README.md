@@ -57,7 +57,6 @@ graph LR
 - **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
 - **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
 
----
 
 ### 2. LangGraph Agent Workflow
 
@@ -65,7 +64,6 @@ graph LR
 - **Cyclic Graph:** Allows the agent to self-correct (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
 - **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
 
----
 
 ### 3. Domain-Specific Tools
 
@@ -73,7 +71,7 @@ graph LR
 - **🧮 Financial Calculator:** A sandboxed Python evaluator for precise YoY growth and projection calculations (explicitly preventing LLM mental math).
 - **⚖️ Compliance Checker:** A rule-based tool that flags regulatory, litigation, and cybersecurity risks.
 
----
+
 
 ## 🛠️ Tech Stack
 
@@ -84,7 +82,7 @@ graph LR
 - **Frontend:** Streamlit
 - **Backend (Extensible):** FastAPI
 
----
+
 
 ## 📂 Project Structure
 
