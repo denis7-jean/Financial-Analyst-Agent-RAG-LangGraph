@@ -103,7 +103,8 @@ graph LR
 
 ```
 
-## 🚀 Getting Started1. Clone the repo
+## 🚀 Getting Started
+1. Clone the repo
 2. Install dependencies: `pip install -r requirements.txt`
 3. Set up `.env` with API keys
 4. Run the ingestion pipeline: `python src/ingestion/ingest.py`
@@ -115,4 +116,3 @@ graph LR
 
 *This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git).*
 
-```
