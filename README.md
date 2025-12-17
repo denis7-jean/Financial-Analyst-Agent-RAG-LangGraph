@@ -84,5 +84,5 @@ graph LR
 
 -----
 
-*Author: [Your Name]*
-*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://www.google.com/search?q=link-to-your-other-repo).*
+*Author: [Huiyao Lan]*
+*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines]([https://www.google.com/search?q=link-to-your-other-repo](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git)).*
