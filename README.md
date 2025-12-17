@@ -112,5 +112,5 @@ graph LR
 
 *Author: Huiyao Lan — MEng, AI / Applied LLM Engineering*
 
-*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git).*
+*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline).*
 
