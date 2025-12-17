@@ -49,40 +49,61 @@ graph LR
     H -- Yes --> I[Final Answer Generator]
 
 ```
+## ✨ Key Features & Technical Capabilities
 
-## ✨ Key Features & Technical Capabilities### 1. Advanced RAG Engineering* **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
-* **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
-* **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
+### 1. Advanced RAG Engineering
 
-### 2. LangGraph Agent Workflow* **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
-* **Cyclic Graph:** Allows the agent to "self-correct" (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
-* **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
+- **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
+- **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
+- **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
 
-### 3. Domain-Specific Tools* **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
-* **🧮 Financial Calculator:** A Python REPL sandbox that executes code for precise YoY growth and margin calculations (solving the LLM math deficiency).
-* **⚖️ Compliance Checker:** A rule-based tool that flags specific risk factors (e.g., "Does this mention pending litigation?").
+---
 
-## 🛠️ Tech Stack* **Orchestration:** LangChain, LangGraph
-* **LLM:** GPT-4o (Claude-compatible design)
-* **Vector Database:** ChromaDB / FAISS
-* **Embeddings:** OpenAI text-embedding-3-small / HuggingFace
-* **Serving:** FastAPI (Backend) + Streamlit (Frontend UI)
+### 2. LangGraph Agent Workflow
 
-## 📂 Project Structure```bash
+- **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
+- **Cyclic Graph:** Allows the agent to self-correct (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
+- **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
+
+---
+
+### 3. Domain-Specific Tools
+
+- **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
+- **🧮 Financial Calculator:** A sandboxed Python evaluator for precise YoY growth and projection calculations (explicitly preventing LLM mental math).
+- **⚖️ Compliance Checker:** A rule-based tool that flags regulatory, litigation, and cybersecurity risks.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Orchestration:** LangChain, LangGraph
+- **LLM:** GPT-4o (Claude-compatible design)
+- **Vector Database:** ChromaDB / FAISS
+- **Embeddings:** OpenAI `text-embedding-3-small`
+- **Frontend:** Streamlit
+- **Backend (Extensible):** FastAPI
+
+---
+
+## 📂 Project Structure
+
+```bash
 ├── data/                   # Raw 10-K PDFs and processed chunks
 ├── src/
 │   ├── ingestion/          # PDF loading, cleaning, and embedding pipelines
 │   ├── retrieval/          # Vector DB logic and custom retrievers
 │   ├── graph/              # LangGraph nodes, edges, and state definitions
 │   ├── tools/              # Custom tools (Calculator, Compliance, Search)
-│   └── utils/              # Helper functions and config
+│   └── utils/              # Helper functions
 ├── app.py                  # Streamlit UI entry point
-├── server.py               # FastAPI backend
-└── notebooks/              # Prototyping and experimentation
+├── requirements.txt
+└── README.md
+
 
 ```
 
-##🚀 Getting Started1. Clone the repo
+## 🚀 Getting Started1. Clone the repo
 2. Install dependencies: `pip install -r requirements.txt`
 3. Set up `.env` with API keys
 4. Run the ingestion pipeline: `python src/ingestion/ingest.py`
