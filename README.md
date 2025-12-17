@@ -1,4 +1,5 @@
-# 📈 Financial Analyst Agent: RAG + LangGraph 
+markdown
+# 📈 Financial Analyst Agent — Tool-Augmented RAG with LangGraph
 
 ![Status](https://img.shields.io/badge/Status-Active_Development-green)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
@@ -6,26 +7,23 @@
 
 ## 🎥 Project Demo
 
+> 30-second demos showcasing retrieval, tool-based computation, and multi-turn reasoning.
+
 ### 1. Core Capability: RAG + Precision Math
-**Scenario:** The user queries Apple’s 2024 Form 10-K risk factors (retrieval),
-then requests a forward-looking projection based on 2024 net sales.
+**Scenario:** The user queries Apple’s 2024 Form 10-K risk factors (retrieval), then requests a forward-looking projection based on 2024 net sales.
 
-The agent retrieves the relevant filing sections and performs a **tool-enforced calculation**
-(showing formula and result explicitly, with no mental math).
+The agent retrieves the relevant filing sections and performs a **tool-enforced calculation** (showing formula and result explicitly, with **zero mental math and deterministic execution**).
 
-▶️ Demo:
+▶️ **Demo:**
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_rag_calculation.mp4
-
 
 ### 2. Advanced Reasoning: Multi-turn Context Awareness
 **Scenario:** The user asks to compare the projected net sales against Apple’s 2023 historical data.
 
-The agent **remembers prior context**, reuses the previous result, and performs a new
-difference calculation without re-running retrieval.
+The agent **remembers prior context**, reuses the previous result, and performs a new difference calculation without re-running retrieval.
 
-▶️ Demo:
+▶️ **Demo:**
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
-
 
 ## 📖 Project Overview
 This project is an advanced **Agentic RAG System** designed to perform autonomous analysis of financial documents (SEC 10-K filings). 
@@ -41,7 +39,7 @@ The system follows a graph-based orchestration pattern:
 
 ```mermaid
 graph LR
-    A[User Query] --> B(Router / Intent Classifier)
+    A[User Query] --> B(LLM Decision Node)
     B --> C{Decision Node}
     C -- "Need Info" --> D[RAG Retriever Tool]
     C -- "Need Math" --> E[Python Calculator Tool]
@@ -50,39 +48,28 @@ graph LR
     G --> H{Is Answer Ready?}
     H -- No --> B
     H -- Yes --> I[Final Answer Generator]
-````
 
-## ✨ Key Features & Technical Capabilities
+```
 
-### 1\. Advanced RAG Engineering
+##✨ Key Features & Technical Capabilities###1. Advanced RAG Engineering* **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
+* **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
+* **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
 
-  * **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
-  * **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
-  * **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
+###2. LangGraph Agent Workflow* **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
+* **Cyclic Graph:** Allows the agent to "self-correct" (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
+* **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
 
-### 2\. LangGraph Agent Workflow
+###3. Domain-Specific Tools* **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
+* **🧮 Financial Calculator:** A Python REPL sandbox that executes code for precise YoY growth and margin calculations (solving the LLM math deficiency).
+* **⚖️ Compliance Checker:** A rule-based tool that flags specific risk factors (e.g., "Does this mention pending litigation?").
 
-  * **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
-  * **Cyclic Graph:** Allows the agent to "self-correct" (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
-  * **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
+##🛠️ Tech Stack* **Orchestration:** LangChain, LangGraph
+* **LLM:** GPT-4o (Claude-compatible design)
+* **Vector Database:** ChromaDB / FAISS
+* **Embeddings:** OpenAI text-embedding-3-small / HuggingFace
+* **Serving:** FastAPI (Backend) + Streamlit (Frontend UI)
 
-### 3\. Domain-Specific Tools
-
-  * **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
-  * **🧮 Financial Calculator:** A Python REPL sandbox that executes code for precise YoY growth and margin calculations (solving the LLM math deficiency).
-  * **⚖️ Compliance Checker:** A rule-based tool that flags specific risk factors (e.g., "Does this mention pending litigation?").
-
-## 🛠️ Tech Stack
-
-  * **Orchestration:** LangChain, LangGraph
-  * **LLM:** GPT-4o / Claude 3.5 Sonnet (Configurable)
-  * **Vector Database:** ChromaDB / FAISS
-  * **Embeddings:** OpenAI text-embedding-3-small / HuggingFace
-  * **Serving:** FastAPI (Backend) + Streamlit (Frontend UI)
-
-## 📂 Project Structure (Planned)
-
-```bash
+##📂 Project Structure```bash
 ├── data/                   # Raw 10-K PDFs and processed chunks
 ├── src/
 │   ├── ingestion/          # PDF loading, cleaning, and embedding pipelines
@@ -93,19 +80,17 @@ graph LR
 ├── app.py                  # Streamlit UI entry point
 ├── server.py               # FastAPI backend
 └── notebooks/              # Prototyping and experimentation
+
 ```
 
-## 🚀 Getting Started
+##🚀 Getting Started1. Clone the repo
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up `.env` with API keys
+4. Run the ingestion pipeline: `python src/ingestion/ingest.py`
+5. Launch the agent: `streamlit run app.py`
 
-*(Instructions to be added as development proceeds)*
+---
 
-1.  Clone the repo
-2.  Install dependencies: `pip install -r requirements.txt`
-3.  Set up `.env` with API keys
-4.  Run the ingestion pipeline: `python src/ingestion/ingest.py`
-5.  Launch the agent: `streamlit run app.py`
+*Author: Huiyao Lan — MEng, AI / Applied LLM Engineering*
 
------
-
-*Author: [Huiyao Lan]*
-*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines]([https://www.google.com/search?q=link-to-your-other-repo](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git)).*
+*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git).*
