@@ -50,8 +50,6 @@ graph LR
 
 ```
 
-
-
 ##✨ Key Features & Technical Capabilities###1. Advanced RAG Engineering* **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
 * **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
 * **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
@@ -95,7 +93,5 @@ graph LR
 *Author: Huiyao Lan — MEng, AI / Applied LLM Engineering*
 
 *This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline.git).*
-
-```
 
 ```
