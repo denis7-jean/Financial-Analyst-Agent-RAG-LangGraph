@@ -7,17 +7,24 @@
 ## 🎥 Project Demo
 
 ### 1. Core Capability: RAG + Precision Math
-**Scenario:** The user asks about specific risk factors (Retrieval) and then requests a projection based on 2024 Net Sales (Reasoning + Calculation).
-*Notice how the agent explicitly shows the calculation formula to ensure accuracy.*
+**Scenario:** The user queries Apple’s 2024 Form 10-K risk factors (retrieval),
+then requests a forward-looking projection based on 2024 net sales.
 
-https://github.com/denis7-jean/assets/demo_rag_calculation.mp4
-*(Note: See instructions below on how to get this link)*
+The agent retrieves the relevant filing sections and performs a **tool-enforced calculation**
+(showing formula and result explicitly, with no mental math).
 
-### 2. Advanced Reasoning: Multi-turn Context
-**Scenario:** The user asks to compare the calculated projection against historical 2023 data.
-*The agent recalls the previous calculation result and performs a new difference calculation without needing to re-fetch data.*
+▶️ Demo:
+https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_rag_calculation.mp4
 
-https://github.com//denis7-jean/assets/demo_multiturn_comparison.mp4
+
+### 2. Advanced Reasoning: Multi-turn Context Awareness
+**Scenario:** The user asks to compare the projected net sales against Apple’s 2023 historical data.
+
+The agent **remembers prior context**, reuses the previous result, and performs a new
+difference calculation without re-running retrieval.
+
+▶️ Demo:
+https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
 
 
 ## 📖 Project Overview
