@@ -1,4 +1,3 @@
-markdown
 # 📈 Financial Analyst Agent — Tool-Augmented RAG with LangGraph
 
 ![Status](https://img.shields.io/badge/Status-Active_Development-green)
