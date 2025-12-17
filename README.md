@@ -10,14 +10,14 @@
 **Scenario:** The user asks about specific risk factors (Retrieval) and then requests a projection based on 2024 Net Sales (Reasoning + Calculation).
 *Notice how the agent explicitly shows the calculation formula to ensure accuracy.*
 
-https://github.com/user-attachments/assets/YOUR_VIDEO_A_LINK_HERE
+https://github.com/user-attachments/assets/demo_multiturn_comparison.mp4
 *(Note: See instructions below on how to get this link)*
 
 ### 2. Advanced Reasoning: Multi-turn Context
 **Scenario:** The user asks to compare the calculated projection against historical 2023 data.
 *The agent recalls the previous calculation result and performs a new difference calculation without needing to re-fetch data.*
 
-https://github.com/user-attachments/assets/YOUR_VIDEO_B_LINK_HERE
+https://github.com/user-attachments/assets/demo_multiturn_comparison.mp4
 
 
 ## 📖 Project Overview
