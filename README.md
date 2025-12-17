@@ -4,6 +4,22 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Tech](https://img.shields.io/badge/GenAI-LangChain_|_LangGraph-orange)
 
+## 🎥 Project Demo
+
+### 1. Core Capability: RAG + Precision Math
+**Scenario:** The user asks about specific risk factors (Retrieval) and then requests a projection based on 2024 Net Sales (Reasoning + Calculation).
+*Notice how the agent explicitly shows the calculation formula to ensure accuracy.*
+
+https://github.com/user-attachments/assets/YOUR_VIDEO_A_LINK_HERE
+*(Note: See instructions below on how to get this link)*
+
+### 2. Advanced Reasoning: Multi-turn Context
+**Scenario:** The user asks to compare the calculated projection against historical 2023 data.
+*The agent recalls the previous calculation result and performs a new difference calculation without needing to re-fetch data.*
+
+https://github.com/user-attachments/assets/YOUR_VIDEO_B_LINK_HERE
+
+
 ## 📖 Project Overview
 This project is an advanced **Agentic RAG System** designed to perform autonomous analysis of financial documents (SEC 10-K filings). 
 
