@@ -50,25 +50,25 @@ graph LR
 
 ```
 
-##✨ Key Features & Technical Capabilities###1. Advanced RAG Engineering* **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
+## ✨ Key Features & Technical Capabilities###1. Advanced RAG Engineering* **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
 * **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
 * **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
 
-###2. LangGraph Agent Workflow* **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
+### 2. LangGraph Agent Workflow* **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
 * **Cyclic Graph:** Allows the agent to "self-correct" (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
 * **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
 
-###3. Domain-Specific Tools* **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
+### 3. Domain-Specific Tools* **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
 * **🧮 Financial Calculator:** A Python REPL sandbox that executes code for precise YoY growth and margin calculations (solving the LLM math deficiency).
 * **⚖️ Compliance Checker:** A rule-based tool that flags specific risk factors (e.g., "Does this mention pending litigation?").
 
-##🛠️ Tech Stack* **Orchestration:** LangChain, LangGraph
+## 🛠️ Tech Stack* **Orchestration:** LangChain, LangGraph
 * **LLM:** GPT-4o (Claude-compatible design)
 * **Vector Database:** ChromaDB / FAISS
 * **Embeddings:** OpenAI text-embedding-3-small / HuggingFace
 * **Serving:** FastAPI (Backend) + Streamlit (Frontend UI)
 
-##📂 Project Structure```bash
+## 📂 Project Structure```bash
 ├── data/                   # Raw 10-K PDFs and processed chunks
 ├── src/
 │   ├── ingestion/          # PDF loading, cleaning, and embedding pipelines
