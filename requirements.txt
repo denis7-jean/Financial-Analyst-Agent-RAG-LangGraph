@@ -7,3 +7,4 @@ pypdf>=4.2.0
 python-dotenv>=1.0.1
 streamlit>=1.32.0
 tiktoken>=0.6.0
+simpleeval>=0.9.13
