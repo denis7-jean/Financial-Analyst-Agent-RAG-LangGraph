@@ -1,4 +1,5 @@
 # src/tools/tools.py
+from simpleeval import simple_eval
 from __future__ import annotations
 
 import math
@@ -21,16 +22,17 @@ def get_financial_retriever_tool():
 
 
 @tool("calculator", return_direct=False)
-
 def calculator(expression: str) -> str:
-    """Useful for performing mathematical calculations. Input should be a valid mathematical expression string."""
-    allowed_names = {k: getattr(math, k) for k in dir(math) if not k.startswith("_")}
+    """Useful for performing mathematical calculations."""
+    # 1. Define math functions (to supportsqrt, sin, pow, etc)
+    math_functions = {k: getattr(math, k) for k in dir(math) if not k.startswith("_")}
+    
     try:
-        result = eval(expression, {"__builtins__": {}}, allowed_names)
+        # 2.  math to simple_eval, safe calculation
+        result = simple_eval(expression, functions=math_functions)
         return str(result)
     except Exception as e:
-        return f"Error: {e}"
-
+        return f"Error processing calculation: {e}"
 
 TOOLS = [get_financial_retriever_tool(), calculator]
 
