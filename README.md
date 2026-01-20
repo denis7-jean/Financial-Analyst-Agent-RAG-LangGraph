@@ -1,116 +1,214 @@
-# 📈 Financial Analyst Agent — Tool-Augmented RAG with LangGraph
+# 📈 Financial Analyst Agent — Tool-Augmented Agentic RAG with LangGraph (Cloud Run Ready)
 
-![Status](https://img.shields.io/badge/Status-Active_Development-green)
+![Status](https://img.shields.io/badge/Status-Deployed_on_Cloud_Run-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
-![Tech](https://img.shields.io/badge/GenAI-LangChain_|_LangGraph-orange)
+![Tech](https://img.shields.io/badge/Stack-LangGraph_|_LangChain_|_Chroma_|_GCP-orange)
+
+A production-oriented **Agentic RAG** system for grounded Q&A over SEC 10-K filings.  
+It combines **Hybrid Retrieval (BM25 + Vector)** with **tool-enforced computation** (no mental math), and is containerized for **Google Cloud Run** deployment.
+
+---
 
 ## 🎥 Project Demo
 
-> 30-second demos showcasing retrieval, tool-based computation, and multi-turn reasoning.
+> Short demos showcasing retrieval, tool-based computation, and multi-turn reasoning.
 
-### 1. Core Capability: RAG + Precision Math
-**Scenario:** The user queries Apple’s 2024 Form 10-K risk factors (retrieval), then requests a forward-looking projection based on 2024 net sales.
+### 1) Core Capability: RAG + Precision Math (Tool-Enforced)
+**Scenario:** Query Apple’s 2024 Form 10-K (retrieval), then do a forward-looking projection based on retrieved net sales.
 
-The agent retrieves the relevant filing sections and performs a **tool-enforced calculation** (showing formula and result explicitly, with **zero mental math and deterministic execution**).
-
-▶️ **Demo:**
+▶️ Demo:
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_rag_calculation.mp4
 
-### 2. Advanced Reasoning: Multi-turn Context Awareness
-**Scenario:** The user asks to compare the projected net sales against Apple’s 2023 historical data.
+### 2) Multi-turn Context: Follow-up Without Re-retrieval
+**Scenario:** Compare the projected net sales against Apple’s 2023 historical data using prior context.
 
-The agent **remembers prior context**, reuses the previous result, and performs a new difference calculation without re-running retrieval.
-
-▶️ **Demo:**
+▶️ Demo:
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
 
+---
+
 ## 📖 Project Overview
-This project is an advanced **Agentic RAG System** designed to perform autonomous analysis of financial documents (SEC 10-K filings). 
 
-Unlike traditional RAG pipelines that simply retrieve text, this system uses **LangGraph** to orchestrate a multi-step reasoning workflow. It employs specific tools for different modes of analysis—vector retrieval for semantic search, a Python calculator for precise quantitative analysis, and a compliance engine for rule-based risk assessment.
+This system is designed to solve two common pain points in financial LLM apps:
 
-### 🎯 Objective
-To solve the "hallucination" and "math" problems in financial LLM applications by decoupling **retrieval**, **reasoning**, and **calculation**.
+1) **Hallucination** → answers must be grounded in filings (citations with source/page/chunk_id)  
+2) **Math errors** → calculations are delegated to a deterministic tool (`calculator`)
 
-## 🏗️ High-Level Architecture
+Unlike a “simple RAG,” the agent is orchestrated by **LangGraph** and can decide when to:
+- retrieve evidence (`search_10k`)
+- compute deterministically (`calculator`)
 
-The system follows a graph-based orchestration pattern:
+---
+
+## 🧠 High-Level Architecture
 
 ```mermaid
 graph LR
-    A[User Query] --> B(LLM Decision Node)
-    B --> C{Decision Node}
-    C -- "Need Info" --> D[RAG Retriever Tool]
-    C -- "Need Math" --> E[Python Calculator Tool]
-    C -- "Check Risk" --> F[Compliance Logic Tool]
-    D & E & F --> G[State Update]
-    G --> H{Is Answer Ready?}
-    H -- No --> B
-    H -- Yes --> I[Final Answer Generator]
+    A[User Query] --> B[LangGraph Agent Node]
+    B --> C{Tool Decision}
+    C -- Retrieve --> D[search_10k: Hybrid Retriever]
+    C -- Compute --> E[calculator: Deterministic Math]
+    D --> F[State Update]
+    E --> F[State Update]
+    F --> G{Answer Ready?}
+    G -- No --> B
+    G -- Yes --> H[Final Answer + Citations]
+````
+
+---
+
+## ✨ Key Features
+
+### 1) Hybrid Retrieval (BM25 + Vector)
+
+* **BM25** improves precision on financial terminology / exact phrases / tables
+* **Vector search** improves semantic recall
+* Results are merged by stable keys (`chunk_id` preferred) and fused with weighted normalized scores.
+
+✅ Debug-friendly evidence formatting includes:
+
+* `source / page / chunk_id`
+* `bm25 / vec / final` scores (normalized fusion)
+
+Example:
 
 ```
-## ✨ Key Features & Technical Capabilities
+[S1] source: Apple_2024_10k.pdf | page: 37 | chunk_id: 184 | bm25=1.000 | vec=0.980 | final=0.988
+```
 
-### 1. Advanced RAG Engineering
+### 2) Tool-Enforced Computation (No Mental Math)
 
-- **Hybrid Search:** Combines semantic search (vector embeddings) with keyword search to handle specific financial terminology.
-- **Smart Chunking:** Implements context-aware chunking strategies to keep financial tables and footnotes intact.
-- **Citation-Backed Answers:** Every claim in the final output is referenced back to the specific source document page.
+* Any projection / YoY growth / differences are computed by the `calculator` tool
+* The agent shows formula + numeric result explicitly
 
+### 3) Cloud-Deployable (Docker + Cloud Run)
 
-### 2. LangGraph Agent Workflow
+* Streamlit UI packaged into a Docker image
+* Deployed to **Google Cloud Run**
+* Secrets injected via env vars (e.g., `GOOGLE_API_KEY`)
 
-- **Multi-Tool Orchestration:** The model isn't just answering; it's *acting*. It autonomously decides when to use a calculator versus when to read text.
-- **Cyclic Graph:** Allows the agent to self-correct (e.g., if a retrieval comes back empty, it can rewrite the query and try again).
-- **State Management:** Maintains conversation history and intermediate reasoning steps across the workflow.
+---
 
+## 🛠️ Tech Stack (Current)
 
-### 3. Domain-Specific Tools
+* **Orchestration:** LangGraph, LangChain
+* **LLM:** Google AI Studio (Gemini via `GOOGLE_API_KEY`, e.g. `gemini-flash-latest`)
+* **Embeddings:** Vertex AI Embeddings (`text-embedding-004`)
+* **Vector DB:** ChromaDB (persistent)
+* **Retrieval:** Hybrid (BM25 + Vector)
+* **Frontend:** Streamlit
+* **Cloud:** Google Cloud Run, Cloud Storage (optional artifact sync)
 
-- **📄 10-K Retriever:** Accesses indexed vector stores of Apple, Microsoft, and Tesla 10-K filings.
-- **🧮 Financial Calculator:** A sandboxed Python evaluator for precise YoY growth and projection calculations (explicitly preventing LLM mental math).
-- **⚖️ Compliance Checker:** A rule-based tool that flags regulatory, litigation, and cybersecurity risks.
+> Note: Some sandbox GCP projects restrict Vertex GenAI models (404 access).
+> This repo uses **AI Studio API key for LLM** while keeping embeddings/storage compatible with GCP.
 
-
-
-## 🛠️ Tech Stack
-
-- **Orchestration:** LangChain, LangGraph
-- **LLM:** GPT-4o (Claude-compatible design)
-- **Vector Database:** ChromaDB / FAISS
-- **Embeddings:** OpenAI `text-embedding-3-small`
-- **Frontend:** Streamlit
-- **Backend (Extensible):** FastAPI
-
-
+---
 
 ## 📂 Project Structure
 
 ```bash
-├── data/                   # Raw 10-K PDFs and processed chunks
+├── data/                   # Raw 10-K PDFs
+├── vector_db/              # Local persisted Chroma artifacts (baked into Docker image)
 ├── src/
-│   ├── ingestion/          # PDF loading, cleaning, and embedding pipelines
-│   ├── retrieval/          # Vector DB logic and custom retrievers
-│   ├── graph/              # LangGraph nodes, edges, and state definitions
-│   ├── tools/              # Custom tools (Calculator, Compliance, Search)
-│   └── utils/              # Helper functions
-├── app.py                  # Streamlit UI entry point
+│   ├── ingestion/          # PDF loading, chunking, embedding, persistence
+│   ├── retrieval/          # Chroma loading + BM25 + hybrid fusion
+│   ├── graph/              # LangGraph nodes/edges/state
+│   ├── tools/              # Tool wrappers (search_10k, calculator)
+│   └── utils/              # Helpers
+├── app.py                  # Streamlit entry
+├── Dockerfile
+├── .dockerignore
 ├── requirements.txt
 └── README.md
-
-
 ```
-
-## 🚀 Getting Started
-1. Clone the repo
-2. Install dependencies: `pip install -r requirements.txt`
-3. Set up `.env` with API keys
-4. Run the ingestion pipeline: `python src/ingestion/ingest.py`
-5. Launch the agent: `streamlit run app.py`
 
 ---
 
-*Author: Huiyao Lan — MEng, AI / Applied LLM Engineering*
+## 🚀 Getting Started (Local)
 
-*This project is part of a portfolio demonstrating end-to-end AI engineering skills, complementing my work on [LoRA Fine-Tuning Pipelines](https://github.com/denis7-jean/financial-nlp-lora-pipeline).*
+### 1) Install dependencies
 
+```bash
+pip install -r requirements.txt
+```
+
+### 2) Set environment variables
+
+Create `.env` (or export env vars in your shell):
+
+```bash
+# LLM (AI Studio)
+GOOGLE_API_KEY=AIza...
+
+# Optional: if you re-run ingestion with Vertex AI Embeddings
+GCP_PROJECT_ID=your-project
+GCP_REGION=us-central1
+```
+
+### 3) (Optional) Run ingestion
+
+If you want to rebuild the vector store from PDFs:
+
+```bash
+python -m src.ingestion.ingest
+```
+
+### 4) Run the app
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## ☁️ Deploy to Google Cloud Run (Artifact Registry)
+
+### 1) Enable required services
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com artifactregistry.googleapis.com
+```
+
+### 2) Create a Docker repository (once)
+
+```bash
+gcloud artifacts repositories create fin-repo \
+  --repository-format=docker \
+  --location=us-central1 \
+  --description="Docker repository for fin-agent"
+```
+
+### 3) Build & push image
+
+```bash
+gcloud builds submit \
+  --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/fin-repo/fin-agent .
+```
+
+### 4) Deploy
+
+```bash
+gcloud run deploy fin-agent \
+  --image us-central1-docker.pkg.dev/YOUR_PROJECT_ID/fin-repo/fin-agent \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GOOGLE_API_KEY=YOUR_AI_STUDIO_KEY
+```
+
+---
+
+## 🧭 Roadmap (Next Tools)
+
+* `web_search` (real-time news / sentiment)
+* `get_stock_price` (yfinance / market data)
+* richer analytics tools (time-series, ratio analysis)
+* evaluation signals for retrieval quality & groundedness
+
+---
+
+**Author:** Huiyao Lan — MEng @ University of Toronto
+This repo is part of an applied LLM engineering portfolio.
+
+```
