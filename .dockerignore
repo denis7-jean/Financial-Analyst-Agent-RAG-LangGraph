@@ -1,0 +1,37 @@
+# 1. Exclude Git history (large and unnecessary for the image)
+.git/
+.gitignore
+
+# 2. Exclude local virtual environments
+# (The Linux container will install its own dependencies; do not copy Windows environments!)
+.venv/
+venv/
+ENV/
+
+# 3. Exclude Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# 4. Exclude IDE configuration files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 5. Exclude Jupyter Notebooks (not needed in production)
+.ipynb_checkpoints/
+*.ipynb
+
+# 6. Exclude secret files (CRITICAL!)
+# (Keys must be injected via Cloud Run environment variables, never baked into the image)
+.env
+*.env
+.env.*
+
+# ========================================================
+# ⚠️ IMPORTANT NOTE:
+# Do NOT exclude 'vector_db', 'chroma_db', or 'data' folders here.
+# We NEED Docker to copy them into the image so the app has data to read.
+# ========================================================
