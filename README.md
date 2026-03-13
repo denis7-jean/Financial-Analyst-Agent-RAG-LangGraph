@@ -20,6 +20,7 @@ https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/do
 
 ▶️ Demo:
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
+
 ---
 
 ### 1. Cross-Domain Tool Synergies (RAG + Web + Math)
