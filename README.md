@@ -188,4 +188,4 @@ streamlit run app.py
 
 ---
 
-*Author: Huiyao Lan — MEng, AI / Applied LLM Engineering*
+*Author: Huiyao Lan — MEng*
