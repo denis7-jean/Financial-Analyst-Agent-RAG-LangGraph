@@ -20,14 +20,13 @@ https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/do
 
 ▶️ Demo:
 https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
-
 ---
 
-### 1. Cross-Domain Tool Synergies (RAG + Web + Math)
+### 3) Cross-Domain Tool Synergies (RAG + Web + Math)
 **Scenario:** The user queries Apple’s 2024 Form 10-K for net sales, requests current stock prices from live markets, and asks for a custom ratio calculation.
 The agent seamlessly transitions across three tools: extracting accurate 10-K figures via Hybrid RAG, fetching real-time market data via `yfinance`, and computing the ratio via a deterministic `calculator` tool without mental math hallucinations.
 
-### 2. Traceability & Artifact Debugging
+### 4) Traceability & Artifact Debugging
 **Scenario:** Inspecting the underlying data pipeline.
 The project includes a dedicated `eval_ui.py` Streamlit dashboard to visually trace parsed HTML tables, chunk metadata (page/section), and Hybrid Search (Dense + Sparse) fusion scores.
 
@@ -39,20 +38,25 @@ Unlike traditional RAG pipelines that simply retrieve flattened text, this syste
 ### 🎯 Objective
 To solve the "hallucination" and "math" problems in financial LLM applications by decoupling **retrieval**, **reasoning**, and **calculation**, while ensuring 100% citation traceability.
 
-## 🏗️ High-Level Architecture
+## 🧠 Architectural Evolution: From ReAct to Explicit Routing
+Initially built using a standard ReAct loop (where the LLM freely decides when/if to call tools), the agent struggled with implicit questions and often hallucinated math or fell back to conversational clarification. 
+
+To achieve production-grade reliability, the architecture was upgraded from **Soft Constraints (Prompt Engineering)** to **Hard Constraints (Graph Edges)**:
+* **Explicit Router:** A structured output node categorizes the query, forcing the agent down a specialized execution path (Filing, Market, or News).
+* **Math Prep Pipeline:** By decoupling extraction (`math_prep_node`) from computation (`calculator_node`), the agent is strictly prohibited from performing "mental math", completely eliminating arithmetic hallucinations.
 
 ```mermaid
-graph LR
-    A[User Query] --> B(LangGraph State Machine)
-    B --> C{Tool Node Routing}
-    C -- "Need 10-K Info" --> D[Hybrid Search Retriever]
-    C -- "Need Math" --> E[Deterministic Calculator]
-    C -- "Need Stock Price" --> F[yfinance Live Data]
-    C -- "Need Macro News" --> G[Tavily Web Search]
-    D & E & F & G --> H[State Update]
-    H --> I{Is Answer Ready?}
-    I -- No --> B
-    I -- Yes --> J[Final Answer Generator]
+graph TD
+    A[User Query] --> B(Router Node: Intent Classification)
+    B -- "filing" --> C[Filing Node: Hybrid Search]
+    B -- "market" --> D[Market Node: yfinance]
+    B -- "news" --> E[News Node: Tavily]
+    C --> F{Requires Math?}
+    F -- "Yes" --> G[Math Prep Node: Extract Operands]
+    G --> H[Calculator Tool]
+    F -- "No" --> I
+    D & E & H --> I[Generate Answer Node]
+    I --> J[Final Output]
 
 ```
 
@@ -71,26 +75,20 @@ graph LR
 
 ### 3. LangGraph Agent Workflow
 
-* **Multi-Tool Orchestration:** Powered by Google's `gemini-2.0-flash`. The agent decides autonomously when to read historical filings vs. when to fetch live Yahoo Finance data.
-* **Cyclic Graph:** Allows the agent to self-correct and chain multiple tools sequentially before answering.
+* **Multi-Tool Orchestration:** Powered by Google's `gemini-2.0-flash`.
+* **State Management:** Passes explicit intermediate variables (like `math_operands` and `math_expression`) through the graph state to guarantee reliable end-to-end execution.
 
 ## 📊 LLMOps & Evaluation (LangSmith)
 
-This project utilizes **LangSmith** for full-lifecycle observability and automated evaluation. We created a baseline dataset based on the Apple 10-K to quantitatively test the agent's RAG and reasoning capabilities.
+This project utilizes **LangSmith** for full-lifecycle observability. We created a baseline dataset based on the Apple 10-K to quantitatively test the agent's RAG and reasoning capabilities.
 
-### The Evaluation Dataset
+### Interpreting the Traces: Beyond "Exact Match"
 
-1. **Q:** "What were Apple's total net sales in 2024?" (Expected: `391,035`)
-2. **Q:** "What were Apple's total net sales in 2023, and how much higher were 2024 net sales than 2023?" (Expected: `...difference versus 2024 was 7,750`)
-3. **Q:** "If Apple's 2024 net sales of 391,035 increased by 5%, what would the projected sales be?" (Expected: `410,586.75`)
-4. **Q:** "What section should I inspect for Apple's major business and operational risks?" (Expected: `Risk Factors`)
+Our LangSmith evaluation revealed profound insights into the limits and capabilities of LLM Agents:
 
-### Interpreting the Results (Why Exact Match fails for Agents)
-
-Our baseline test yielded an `Exact_match` of **0.00** and `Contains_expected_answers` of **0.50**. Counter-intuitively, this demonstrates the **advanced conversational and analytical nature of the agent**, rather than a failure:
-
-* **Zero "Exact Match":** For Question 1, instead of blindly outputting "391,035", the agent outputs: *"Apple's total net sales for 2024 were $391,035 million (or $391.035 billion). (Apple_2024_10k.pdf, page 37)"*. It added units, scale conversions, and perfect document traceability—all of which break rigid string-matching metrics but provide immense value to end-users.
-* **Low "Contains" Score due to Multi-Turn Logic:** For Question 4, instead of simply answering "Risk Factors", the agent triggered a conversational clarification: *"I can help you find that. To which filing are you referring? If you can provide the filing year..."* This proves the agent correctly behaves as an interactive assistant rather than a static QA bot.
+1. **The Flaw of Exact Match:** The evaluator scored `0.00` on Exact Match because the agent naturally adds units, scale conversions (e.g., "billion"), and perfect document citations. This highlights why LLM-as-a-Judge is preferred for Agent evaluation over rigid string-matching.
+2. **Routing Success:** Traces proved the Explicit Router successfully cured the agent of conversational loops. Instead of asking "Which year?", it correctly routed implicit questions directly to the 10-K filing tools.
+3. **The RAG Physical Limit (Future Work):** While the math calculation flow is perfectly rigid, extracting specific multi-year figures from complex SEC tables occasionally resulted in row/column misalignment. This demonstrates the physical ceiling of text-based RAG on dense tables, paving the way for our next evolution: **Text2SQL** or **Vision-Language Models (GraphRAG/Multimodal parsing)** for 100% structured data extraction.
 
 ## 🛠️ Tech Stack
 
@@ -99,7 +97,7 @@ Our baseline test yielded an `Exact_match` of **0.00** and `Contains_expected_an
 * **Embeddings:** Google `text-embedding-004`
 * **Vector DB & Retrieval:** ChromaDB (Dense) + Rank-BM25 (Sparse)
 * **Document Parsing:** `unstructured` (with Tesseract OCR & Poppler)
-* **Agent Tools:** `yfinance` (Market Data), `tavily-python` (Web Search), `numexpr` (Math)
+* **Agent Tools:** `yfinance`, `tavily-python`, `numexpr`
 * **Observability:** LangSmith
 * **Frontend:** Streamlit
 
@@ -112,12 +110,13 @@ Our baseline test yielded an `Exact_match` of **0.00** and `Contains_expected_an
 │   ├── config.py           # Centralized environment configurations
 │   ├── ingestion/          # Table-aware PDF parsing and batch embedding
 │   ├── retrieval/          # ChromaDB + BM25 Hybrid Ensemble Retriever
-│   ├── graph/              # LangGraph nodes, tools binding, and state definition
+│   ├── graph/              # LangGraph nodes, routing, and state definition
 │   ├── tools/              # search_10k, yfinance_tool, calculator, web_search
 │   └── evaluation/         # LangSmith dataset creation and evaluation scripts
 ├── app.py                  # Main Streamlit UI (Chat Agent)
 ├── eval_ui.py              # Debug UI for Artifact tracing & Retrieval evaluation
 ├── requirements.txt
+├── Dockerfile              # Cloud Run ready containerization (with OS-level dependencies)
 └── README.md
 
 ```
@@ -170,13 +169,6 @@ python -m src.evaluation.evaluate_langsmith
 
 ```
 
-Or use the local UI to inspect chunks and search scores:
-
-```bash
-streamlit run eval_ui.py
-
-```
-
 ### 5. Launch the Agent
 
 Chat with the Financial Analyst:
@@ -188,4 +180,4 @@ streamlit run app.py
 
 ---
 
-*Author: Huiyao Lan — MEng*
+*Author: Huiyao Lan — MEng, Data Analytics and Machine Learning*
