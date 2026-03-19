@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import json
 import os
-import re
 import uuid
 from typing import Any
 
@@ -11,7 +11,8 @@ except ImportError:  # pragma: no cover - optional in constrained environments
     def load_dotenv(*args, **kwargs):
         return False
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 from langsmith import Client
 from langsmith.evaluation import evaluate
 
@@ -46,11 +47,23 @@ DATASET_EXAMPLES = [
         "question": "What section should I inspect for Apple's major business and operational risks?",
         "expected_answer": "Risk Factors",
     },
+    {
+        "question": "What was Apple's gross margin in 2024?",
+        "expected_answer": "180,683",
+    },
+    {
+        "question": "What was Apple's net income in 2024?",
+        "expected_answer": "93,736",
+    },
+    {
+        "question": "What does Apple identify as its primary competition risks?",
+        "expected_answer": "Risk Factors",
+    },
+    {
+        "question": "What was Apple's cash flow from operations in 2024?",
+        "expected_answer": "118,254",
+    },
 ]
-
-
-def _normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").strip().lower())
 
 
 def get_client() -> Client:
@@ -114,31 +127,141 @@ def run_agent(inputs: dict[str, Any]) -> dict[str, str]:
     return {"answer": answer}
 
 
-def exact_match_evaluator(run, example) -> dict[str, Any]:
-    predicted = _normalize_text((run.outputs or {}).get("answer", ""))
-    expected = _normalize_text((example.outputs or {}).get("expected_answer", ""))
-    return {
-        "key": "exact_match",
-        "score": 1.0 if predicted == expected else 0.0,
-    }
+_FILING_KEYWORDS = ("net sales", "revenue", "income", "margin", "cash flow", "eps", "profit", "operating")
+_NARRATIVE_KEYWORDS = ("risk factors", "risk", "business description", "md&a", "management discussion")
 
 
-def contains_expected_answer_evaluator(run, example) -> dict[str, Any]:
-    predicted = _normalize_text((run.outputs or {}).get("answer", ""))
-    expected = _normalize_text((example.outputs or {}).get("expected_answer", ""))
-    return {
-        "key": "contains_expected_answer",
-        "score": 1.0 if expected and expected in predicted else 0.0,
-    }
+def evaluator_route_correct(run, example) -> dict[str, Any]:
+    """Check if the agent used the right route type for the question."""
+    predicted_answer = (run.outputs or {}).get("answer", "").lower()
+    expected_answer = (example.outputs or {}).get("expected_answer", "").lower()
+
+    expects_narrative = any(kw in expected_answer for kw in _NARRATIVE_KEYWORDS)
+    expects_financial = any(kw in expected_answer for kw in _FILING_KEYWORDS) or any(
+        ch.isdigit() for ch in expected_answer
+    )
+
+    if expects_narrative:
+        score = 1.0 if any(kw in predicted_answer for kw in _NARRATIVE_KEYWORDS) else 0.0
+    elif expects_financial:
+        score = 1.0 if any(ch.isdigit() for ch in predicted_answer) else 0.0
+    else:
+        score = 1.0  # general — pass through
+
+    return {"key": "route_correct", "score": score}
+
+
+def evaluator_retrieval_support(run, example) -> dict[str, Any]:
+    """Check if the answer contains a citation (page, source, section reference)."""
+    predicted_answer = (run.outputs or {}).get("answer", "").lower()
+    has_citation = any(
+        marker in predicted_answer
+        for marker in ("page", "aapl", "apple", "risk factors", "10-k", "10k", "filing")
+    )
+    return {"key": "retrieval_support_present", "score": 1.0 if has_citation else 0.0}
+
+
+def evaluator_cell_selection(run, example) -> dict[str, Any]:
+    """For numeric questions, check if the correct numbers appear in the answer."""
+    predicted_answer = (run.outputs or {}).get("answer", "")
+    expected_answer = (example.outputs or {}).get("expected_answer", "")
+
+    # Non-numeric questions: pass through
+    if not any(ch.isdigit() for ch in expected_answer):
+        return {"key": "cell_selection_correct", "score": 1.0, "comment": "Non-numeric question, skipped."}
+
+    judge_llm = ChatOpenAI(
+        model="gpt-4o",
+        temperature=0.0,
+        model_kwargs={"response_format": {"type": "json_object"}},
+    )
+    try:
+        response = judge_llm.invoke(
+            [
+                SystemMessage(
+                    content=(
+                        "Does the predicted answer contain the correct numbers from the expected answer? "
+                        "Score 1 if all key numbers match, 0 otherwise. "
+                        'Output JSON with keys "score" (int 1 or 0) and "reason" (short explanation).'
+                    )
+                ),
+                HumanMessage(
+                    content=f"EXPECTED_ANSWER:\n{expected_answer}\n\nPREDICTED_ANSWER:\n{predicted_answer}"
+                ),
+            ]
+        )
+        parsed = json.loads(response.content if isinstance(response.content, str) else json.dumps(response.content))
+        return {
+            "key": "cell_selection_correct",
+            "score": float(int(parsed.get("score", 0))),
+            "comment": str(parsed.get("reason", "")),
+        }
+    except Exception as exc:
+        return {"key": "cell_selection_correct", "score": 0.0, "comment": f"Judge failed: {exc}"}
+
+
+def evaluator_final_answer(run, example) -> dict[str, Any]:
+    """GPT-4o judge for overall answer correctness (renamed from llm_correctness_evaluator)."""
+    judge_llm = ChatOpenAI(
+        model="gpt-4o",
+        temperature=0.0,
+        model_kwargs={"response_format": {"type": "json_object"}},
+    )
+
+    predicted_answer = (run.outputs or {}).get("answer", "")
+    expected_answer = (example.outputs or {}).get("expected_answer", "")
+
+    system_message = SystemMessage(
+        content=(
+            "You are an impartial and strict financial grader. Compare the PREDICTED_ANSWER against the EXPECTED_ANSWER.\n"
+            "Rubric:\n"
+            "a. If the EXPECTED_ANSWER contains specific numbers, the PREDICTED_ANSWER must contain those exact numbers or their mathematical equivalents.\n"
+            "b. Ignore conversational filler or extra context in the PREDICTED_ANSWER, as long as the core fact/number matches the EXPECTED_ANSWER.\n"
+            "c. You must output a JSON object with strictly two keys: \"score\" (integer 1 if correct, 0 if incorrect) and \"reason\" (short explanation)."
+        )
+    )
+    human_message = HumanMessage(
+        content=(
+            f"EXPECTED_ANSWER:\n{expected_answer}\n\n"
+            f"PREDICTED_ANSWER:\n{predicted_answer}"
+        )
+    )
+
+    try:
+        response = judge_llm.invoke([system_message, human_message])
+        raw_content = response.content
+        if isinstance(raw_content, str):
+            parsed = json.loads(raw_content)
+        else:
+            parsed = json.loads(json.dumps(raw_content))
+
+        parsed_score = int(parsed.get("score", 0))
+        parsed_reason = str(parsed.get("reason", "No reason provided."))
+        return {
+            "key": "final_answer_correct",
+            "score": float(parsed_score),
+            "comment": parsed_reason,
+        }
+    except Exception as exc:
+        return {
+            "key": "final_answer_correct",
+            "score": 0.0,
+            "comment": f"Judge evaluation failed: {exc}",
+        }
 
 
 def run_evaluation(client: Client, dataset_name: str = DATASET_NAME):
     return evaluate(
         run_agent,
         data=dataset_name,
-        evaluators=[exact_match_evaluator, contains_expected_answer_evaluator],
+        evaluators=[
+            evaluator_route_correct,
+            evaluator_retrieval_support,
+            evaluator_cell_selection,
+            evaluator_final_answer,
+        ],
         experiment_prefix="financial-analyst-agent",
-        description="Baseline LangSmith evaluation for the Apple 10-K LangGraph agent.",
+        description="4-dimension LangSmith evaluation for the Apple 10-K LangGraph agent.",
     )
 
 

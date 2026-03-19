@@ -1,4 +1,6 @@
 import json
+import re
+from io import StringIO
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence
@@ -48,6 +50,14 @@ except ImportError:  # pragma: no cover - lightweight fallback for local tests
                         break
                     start = max(end - self.chunk_overlap, start + 1)
             return docs
+
+try:
+    import pandas as pd
+except ImportError as exc:  # pragma: no cover - runtime dependency for aligned table parsing
+    raise ImportError(
+        "pandas is required for aligned HTML table parsing in ingestion. "
+        "Install with `pip install pandas lxml`."
+    ) from exc
 
 from src.config import (
     CHROMA_PERSIST_DIR,
@@ -115,6 +125,154 @@ def _clean_text(value: Any) -> str:
         return ""
     text = str(value).replace("\x00", " ").strip()
     return text
+
+
+def _convert_html_table_to_aligned_text(html_str: str, section_title: str) -> str:
+    if not html_str:
+        return ""
+
+    try:
+        dfs = pd.read_html(StringIO(html_str))
+    except Exception:
+        fallback_section = section_title or "Unknown"
+        return (
+            "[TABLE ALIGNMENT]\n"
+            f"Table Section: {fallback_section}\n"
+            "Parsing failed. Raw HTML follows:\n"
+            f"{html_str}"
+        )
+
+    if not dfs:
+        return html_str
+
+    df = dfs[0].fillna("")
+    if hasattr(df.columns, "to_flat_index"):
+        flat_columns = df.columns.to_flat_index()
+        headers = [
+            " ".join(str(part).strip() for part in column if str(part).strip() and str(part) != "nan")
+            if isinstance(column, tuple)
+            else str(column).strip()
+            for column in flat_columns
+        ]
+    else:
+        headers = [str(column).strip() for column in df.columns]
+
+    headers = [header or f"Column {idx}" for idx, header in enumerate(headers)]
+    lines = [
+        "[TABLE ALIGNMENT]",
+        f"Table Section: {section_title or 'Unknown'}",
+        "Headers: | " + " | ".join(headers) + " |",
+        "-" * max(50, len(" | ".join(headers)) + 12),
+    ]
+
+    for row_index, row in enumerate(df.itertuples(index=False, name=None), start=1):
+        row_values = [str(value).strip() if value is not None else "" for value in row]
+        lines.append(f"Row {row_index}: | " + " | ".join(row_values) + " |")
+
+    return "\n".join(lines)
+
+
+_YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+
+
+def _extract_table_metadata(html_str: str) -> dict[str, Any]:
+    """Extract structural metadata from an HTML table for downstream retrieval."""
+    if not html_str:
+        return {}
+    try:
+        dfs = pd.read_html(StringIO(html_str))
+    except Exception:
+        return {}
+    if not dfs:
+        return {}
+
+    df = dfs[0].fillna("")
+
+    if hasattr(df.columns, "to_flat_index"):
+        flat_columns = df.columns.to_flat_index()
+        headers = [
+            " ".join(str(part).strip() for part in col if str(part).strip() and str(part) != "nan")
+            if isinstance(col, tuple) else str(col).strip()
+            for col in flat_columns
+        ]
+    else:
+        headers = [str(col).strip() for col in df.columns]
+    headers = [h for h in headers if h]
+
+    year_headers = sorted({y for h in headers for y in _YEAR_RE.findall(h)})
+
+    first_column_candidates: list[str] = []
+    if len(df.columns) > 0:
+        for val in df.iloc[:, 0]:
+            s = str(val).strip()
+            if s and s.lower() != "nan":
+                first_column_candidates.append(s)
+
+    return {
+        "table_headers": headers,
+        "year_headers": year_headers,
+        "first_column_candidates": first_column_candidates,
+        "table_row_count": len(df),
+    }
+
+
+def _extract_table_rows(
+    html_str: str,
+    chunk_id: int,
+    source: str,
+    page: Optional[int],
+    section: Optional[str],
+) -> List[dict[str, Any]]:
+    """Extract row-level records from an HTML table for rule-assisted matching."""
+    if not html_str:
+        return []
+    try:
+        dfs = pd.read_html(StringIO(html_str))
+    except Exception:
+        return []
+    if not dfs:
+        return []
+
+    df = dfs[0].fillna("")
+
+    if hasattr(df.columns, "to_flat_index"):
+        flat_columns = df.columns.to_flat_index()
+        headers = [
+            " ".join(str(part).strip() for part in col if str(part).strip() and str(part) != "nan")
+            if isinstance(col, tuple) else str(col).strip()
+            for col in flat_columns
+        ]
+    else:
+        headers = [str(col).strip() for col in df.columns]
+
+    year_headers = sorted({y for h in headers for y in _YEAR_RE.findall(h)})
+
+    rows: List[dict[str, Any]] = []
+    for row_index, row in enumerate(df.itertuples(index=False, name=None)):
+        values = [str(v).strip() for v in row]
+        first_col = values[0] if values else ""
+
+        if not first_col:
+            continue
+        # Skip sub-headers: all caps with no digits
+        if first_col == first_col.upper() and not any(c.isdigit() for c in first_col):
+            continue
+
+        row_label_normalized = " ".join(first_col.lower().split())
+        rows.append({
+            "chunk_id": chunk_id,
+            "source": source,
+            "page": page,
+            "section": section,
+            "row_label": first_col,
+            "row_label_normalized": row_label_normalized,
+            "headers": headers,
+            "year_headers": year_headers,
+            "values": values,
+            "row_index": row_index,
+        })
+
+    return rows
 
 
 def _normalize_element(raw_element: Any, source_path: Path, index: int, current_section: Optional[str]) -> ParsedElement:
@@ -255,9 +413,21 @@ def build_chunks(
             table_content = element.content or element.text
             if not table_content:
                 continue
+            table_html = element.metadata.get("table_html")
+            aligned_text = (
+                _convert_html_table_to_aligned_text(
+                    table_html,
+                    element.section or current_section or "",
+                )
+                if table_html
+                else table_content
+            )
+            table_meta = _extract_table_metadata(table_html) if table_html else {}
+            # Convert empty lists to None for ChromaDB compatibility
+            table_meta = {k: (v if v else None) for k, v in table_meta.items()}
             chunks.append(
                 Document(
-                    page_content=table_content,
+                    page_content=aligned_text,
                     metadata={
                         "source": element.source,
                         "doc_source": element.source,
@@ -268,9 +438,10 @@ def build_chunks(
                         "section": element.section or current_section,
                         "element_type": element.element_type,
                         "content_format": element.content_format,
-                        "chunk_kind": "table",
+                        "chunk_kind": "table_aligned",
                         "element_count": 1,
-                        "table_html": element.metadata.get("table_html"),
+                        "table_html": table_html,
+                        **table_meta,
                     },
                 )
             )
@@ -323,9 +494,10 @@ def _write_summary(
     persist_directory: Path,
     chunks_jsonl_path: Path,
     parsed_elements_path: Path,
+    table_rows_path: Optional[Path] = None,
 ) -> None:
     summary_path.parent.mkdir(parents=True, exist_ok=True)
-    summary = {
+    summary: dict[str, Any] = {
         "pdf_count": len(pdf_files),
         "sources": [pdf.name for pdf in pdf_files],
         "parsed_element_count": len(parsed_elements),
@@ -334,6 +506,8 @@ def _write_summary(
         "chunks_jsonl_path": str(chunks_jsonl_path),
         "parsed_elements_path": str(parsed_elements_path),
     }
+    if table_rows_path is not None:
+        summary["table_rows_path"] = str(table_rows_path)
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
 
@@ -379,6 +553,21 @@ def ingest_pdf_files(
     _write_parsed_elements(all_parsed_elements, parsed_path)
     _write_chunks_jsonl(all_chunks, chunks_path)
 
+    # Generate row-level table artifact
+    table_rows_records: List[dict[str, Any]] = []
+    for chunk in all_chunks:
+        meta = chunk.metadata or {}
+        if meta.get("chunk_kind") == "table_aligned" and meta.get("table_html"):
+            table_rows_records.extend(_extract_table_rows(
+                html_str=meta["table_html"],
+                chunk_id=meta.get("chunk_id"),
+                source=meta.get("source", ""),
+                page=meta.get("page"),
+                section=meta.get("section"),
+            ))
+    table_rows_jsonl_path = persist_dir / "table_rows.jsonl"
+    _write_jsonl(table_rows_jsonl_path, table_rows_records)
+
     compatibility_chunks_path = persist_dir / "chunks.jsonl"
     if compatibility_chunks_path.resolve() != chunks_path.resolve():
         _write_chunks_jsonl(all_chunks, compatibility_chunks_path)
@@ -409,6 +598,7 @@ def ingest_pdf_files(
         persist_directory=persist_dir,
         chunks_jsonl_path=chunks_path,
         parsed_elements_path=parsed_path,
+        table_rows_path=table_rows_jsonl_path,
     )
 
     if UPLOAD_VECTOR_DB_TO_GCS and persist_dir.exists():

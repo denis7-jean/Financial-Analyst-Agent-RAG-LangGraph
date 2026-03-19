@@ -5,7 +5,8 @@ from typing import Dict, List, Tuple
 
 from langchain_core.documents import Document
 
-from src.retrieval.retrieval import get_vectorstore, PERSIST_DIR
+from src.retrieval.retrieval import get_vectorstore
+from src.config import CHROMA_PERSIST_DIR as PERSIST_DIR
 from src.retrieval.bm25 import bm25_search
 
 
