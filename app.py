@@ -1,5 +1,6 @@
 # app.py
 import os
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
@@ -25,6 +26,8 @@ st.title("Financial Analyst Chat")
 # -------------------- Session State -------------------- #
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
 
 # -------------------- Display Chat History -------------------- #
 for msg in st.session_state["messages"]:
@@ -49,7 +52,7 @@ if user_input:
     # Optional: visualize agent steps
     status_box = st.status("🤖 Agent is thinking...", state="running")
 
-    for event in app.stream(inputs, stream_mode="values", config={"configurable": {"thread_id": "1"}}):
+    for event in app.stream(inputs, stream_mode="values", config={"configurable": {"thread_id": st.session_state.thread_id}}):
         last_msg = event["messages"][-1]
 
         # Tool call visualization

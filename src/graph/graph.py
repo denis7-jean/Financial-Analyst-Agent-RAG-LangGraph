@@ -6,8 +6,10 @@ from typing import Annotated, Any, Literal, TypedDict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
+from langgraph.store.memory import InMemoryStore
 from pydantic import BaseModel, Field
 
 from src.config import GEMINI_MODEL
@@ -181,7 +183,16 @@ def _latest_user_message(state: AgentState) -> str:
 
 
 def _guess_ticker(text: str) -> str | None:
-    uppercase_candidates = re.findall(r"\b[A-Z]{1,5}\b", text)
+    TICKER_BLOCKLIST = {
+        "I", "A", "IN", "IF", "THE", "FOR", "AND", "OR",
+        "OF", "TO", "IS", "IT", "AT", "AN", "AS", "BE",
+        "BY", "DO", "GO", "HE", "ME", "MY", "NO", "ON",
+        "SO", "UP", "US", "WE",
+    }
+    uppercase_candidates = [
+        t for t in re.findall(r"\b[A-Z]{1,5}\b", text)
+        if t not in TICKER_BLOCKLIST
+    ]
     if uppercase_candidates:
         return uppercase_candidates[0]
 
@@ -204,9 +215,9 @@ def router_node(state: AgentState) -> AgentState:
             SystemMessage(
                 content=(
                     "Classify the user's latest question into exactly one route.\n"
-                    "- filing_financial: numeric facts, specific financial metrics, year-over-year comparisons, or any question requiring table lookups from the 10-K.\n"
+                    "- filing_financial: historical financial metrics from SEC filings — net sales, revenue, gross margin, net income, cash flow, EPS from annual reports. Examples: 'What were Apple's net sales in 2024?', 'What was Apple's gross margin last year?'\n"
                     "- filing_narrative: qualitative sections like risk factors, business descriptions, MD&A discussion, or prose from the 10-K.\n"
-                    "- market: stock price, valuation, ticker, or public market data.\n"
+                    "- market: stock price, current valuation, P/E ratio, market cap, ticker data, or any question about live/current market data. Examples: 'What is Apple's stock price?', 'What is AAPL trading at?', 'What is Apple's market cap today?'\n"
                     "- news: macro, economic, geopolitical, or current-events search.\n"
                     "- general: conversational or generic questions that do not require an external tool."
                 )
@@ -776,7 +787,9 @@ workflow.add_conditional_edges(
     },
 )
 
-app = workflow.compile()
+checkpointer = MemorySaver()
+store = InMemoryStore()
+app = workflow.compile(checkpointer=checkpointer, store=store)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@
 ![Tech](https://img.shields.io/badge/GenAI-LangGraph_|_Gemini_2.0-orange)
 ![Retrieval](https://img.shields.io/badge/Retrieval-Hybrid_(BM25%2BVector+RRF)-red)
 ![LLMOps](https://img.shields.io/badge/Observability-LangSmith-blueviolet)
+![Memory](https://img.shields.io/badge/Memory-MemorySaver_%7C_InMemoryStore-brightgreen)
 
 ## 🎥 Project Demo
 > Short demos showcasing retrieval, tool-based computation, and multi-turn reasoning.
@@ -133,6 +134,13 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 | `cell_selection_correct` | **5 / 8 — 63%** | Correct numeric values extracted |
 | `final_answer_correct` | **6 / 8 — 75%** | End-to-end correct answer |
 
+### Memory & Routing Verification (Manual)
+| Query | Expected Behavior | Result |
+|-------|-------------------|--------|
+| "What were Apple's net sales in 2024?" | Retrieve from 10-K | $391,035 ✅ |
+| "How does that compare to 2023?" | Use memory, no re-retrieval | 383,285 from prior context ✅ |
+| "What's the current stock price of AAPL?" | Route to market_node → yfinance | $247.99 ✅ |
+
 ### Interpreting the Results
 
 **Strengths confirmed by evaluation:**
@@ -169,6 +177,12 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 - **Separate audit paths:** `financial_audit_node` (strict numeric verification) and `narrative_audit_node` (citation and section grounding only)
 - **All LLM calls** use `with_structured_output(PydanticSchema)` — no free-form outputs in routing or planning steps
 
+### 5. Persistent Conversational Memory (LangGraph)
+- **Thread-level short-term memory:** Uses `MemorySaver` as the graph checkpointer — every message, retrieval result, and calculator output is persisted per conversation thread, enabling genuine multi-turn context without re-retrieval.
+- **Cross-thread long-term memory:** Uses `InMemoryStore` — architecture is ready for user-level persistent facts across sessions.
+- **Session isolation:** Each browser session receives a unique `thread_id` (UUID generated via `st.session_state`) — conversations are fully isolated between tabs and users.
+- **Verified behavior:** Follow-up queries like "How does that compare to 2023?" correctly resolve using prior context without triggering a new retrieval call.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -184,6 +198,7 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 | Document Parsing | `unstructured` (Tesseract OCR + Poppler, hi_res) |
 | Agent Tools | `yfinance`, `tavily-python`, `numexpr`, `simpleeval` |
 | Observability | LangSmith (4-dimension evaluation) |
+| Memory | LangGraph `MemorySaver` (thread) + `InMemoryStore` (cross-thread) |
 | Frontend | Streamlit |
 
 ---
