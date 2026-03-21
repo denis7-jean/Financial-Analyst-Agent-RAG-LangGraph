@@ -1,5 +1,6 @@
 # app.py
 import os
+import re
 import uuid
 from dotenv import load_dotenv
 load_dotenv()
@@ -8,20 +9,40 @@ from langchain_core.messages import HumanMessage, AIMessage
 from src.graph.graph import app
 
 # -------------------- Page Config -------------------- #
-st.set_page_config(page_title="Financial Analyst Agent", page_icon="💰")
+st.set_page_config(page_title="Financial Analyst Agent", page_icon="📈")
 
 with st.sidebar:
-    st.title("💰 Financial Analyst Agent")
+    st.title("📈 Financial Analyst Agent")
     st.markdown(
         """
-        This agent uses **RAG + Tools** to answer questions about
-        the 2024 Apple 10-K filing and can also perform calculations.
-        - **search_10k**: Retrieves relevant excerpts from the filing.
-        - **calculator**: Executes math expressions.
+        An agentic RAG system for autonomous analysis of SEC 10-K
+        filings, powered by LangGraph explicit routing and persistent
+        memory.
+
+        **Tools**
+        - **search_10k**: Hybrid retrieval (BM25 + ChromaDB + RRF)
+          over ingested 10-K chunks with cell-level table extraction.
+        - **calculator**: Deterministic arithmetic — no mental math.
+        - **yfinance_tool**: Live stock price and market data.
+        - **web_search**: Macroeconomic and news search via Tavily.
+
+        **Capabilities**
+        - Financial metrics with page-level citations
+        - Multi-turn memory across conversation turns
+        - Cross-tool queries (10-K + market data + math)
+        - Narrative sections: risk factors, MD&A, strategy
+
+        **Currently ingested:** Apple 2024 Form 10-K
         """
     )
 
 st.title("Financial Analyst Chat")
+
+
+def safe_markdown(text: str) -> None:
+    # Escape $ signs that are not intended as LaTeX delimiters
+    escaped = re.sub(r'\$(?!\$)', r'\\$', text)
+    st.markdown(escaped)
 
 # -------------------- Session State -------------------- #
 if "messages" not in st.session_state:
@@ -33,7 +54,7 @@ if "thread_id" not in st.session_state:
 for msg in st.session_state["messages"]:
     role = "assistant" if isinstance(msg, AIMessage) else "user"
     with st.chat_message(role):
-        st.markdown(msg.content)
+        safe_markdown(msg.content)
 
 # -------------------- Handle User Input -------------------- #
 user_input = st.chat_input("Ask about Apple's 10-K, or request a calculation...")
@@ -72,4 +93,4 @@ if user_input:
         ai_msg = AIMessage(content=final_response)
         st.session_state["messages"].append(ai_msg)
         with st.chat_message("assistant"):
-            st.write(final_response)
+            safe_markdown(final_response)

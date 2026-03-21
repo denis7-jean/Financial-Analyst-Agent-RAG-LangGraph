@@ -8,29 +8,33 @@
 ![Memory](https://img.shields.io/badge/Memory-MemorySaver_%7C_InMemoryStore-brightgreen)
 
 ## 🎥 Project Demo
-> Short demos showcasing retrieval, tool-based computation, and multi-turn reasoning.
+> Four demos showcasing cell-level table extraction, persistent memory, cross-tool synergy, and narrative RAG.
 
-### 1) Core Capability: RAG + Precision Math (Tool-Enforced)
-**Scenario:** Query Apple's 2024 Form 10-K (retrieval), then do a forward-looking projection based on retrieved net sales.
-
-▶️ Demo:
-https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_rag_calculation.mp4
-
-### 2) Multi-turn Context: Follow-up Without Re-retrieval
-**Scenario:** Compare the projected net sales against Apple's 2023 historical data using prior context.
+### 1) Core RAG + Precision Math (Cell-Level Extraction)
+**Scenario:** Query Apple's 2024 Form 10-K for exact financial metrics. The agent uses `cell_plan_node` to pre-select exact table cells via rule-assisted row matching before the LLM reads any table, then routes through the deterministic `calculator` tool.
 
 ▶️ Demo:
-https://github.com/denis7-jean/Financial-Analyst-Agent-RAG-LangGraph/releases/download/v1.0/demo_multiturn_comparison.mp4
+https://github.com/user-attachments/assets/460a6b6c-02cf-4df0-8add-323366cda06a
+
+### 2) Multi-turn Memory (3-Turn Chain, No Re-retrieval)
+**Scenario:** A 3-turn conversation chain — project 2024 net sales with 15% growth, compare to 2023, then compute percentage growth over 2022. Each follow-up resolves from `MemorySaver` context without triggering new retrieval calls.
+
+▶️ Demo:
+https://github.com/user-attachments/assets/1e3d72c9-cfbd-4247-babd-aa8b89ed6f71
 
 ---
 
-### 3) Cross-Domain Tool Synergies (RAG + Web + Math)
-**Scenario:** The user queries Apple's 2024 Form 10-K for net sales, requests current stock prices from live markets, and asks for a custom ratio calculation.
-The agent seamlessly transitions across three tools: extracting accurate 10-K figures via Hybrid RAG, fetching real-time market data via `yfinance`, and computing the ratio via a deterministic `calculator` tool without mental math hallucinations.
+### 3) Cross-Domain Tool Synergies (RAG + Market + Math)
+**Scenario:** The agent transitions across three tools in one session — retrieves 2024 net sales from the 10-K via Hybrid RAG, fetches live market cap from `yfinance`, then computes the Price-to-Sales ratio using the `calculator` tool. Demonstrates seamless cross-tool context passing.
 
-### 4) Traceability & Artifact Debugging
-**Scenario:** Inspecting the underlying data pipeline.
-The project includes a dedicated `eval_ui.py` Streamlit dashboard to visually trace parsed HTML tables, chunk metadata (page/section), and Hybrid Search (Dense + Sparse) fusion scores.
+▶️ Demo:
+https://github.com/user-attachments/assets/528b5221-c39d-43ac-8753-536829b88f72
+
+### 4) Narrative RAG (Risk Factors + Section Routing)
+**Scenario:** Qualitative multi-turn queries routed through `filing_narrative_node` and `narrative_audit_node` — retrieves primary risk factors with page citations, drills into supply chain risks, and identifies the correct 10-K section for business strategy.
+
+▶️ Demo:
+https://github.com/user-attachments/assets/4f395ac3-27af-4a0e-8cf3-99aac5e634e7
 
 ---
 
