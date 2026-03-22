@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 
 from src.core.state import AgentState, MarketPlan, NewsPlan
 from src.nodes.router import COMPANY_TICKER_MAP, ROUTE_LLM, _guess_ticker, _latest_user_message
 from src.tools.tools import web_search, yfinance_tool
 
 
-def market_node(state: AgentState) -> AgentState:
+def market_node(state: AgentState, config: RunnableConfig, store) -> AgentState:
     latest_question = _latest_user_message(state)
     planner = ROUTE_LLM.with_structured_output(MarketPlan)
     plan = planner.invoke(
@@ -25,6 +26,19 @@ def market_node(state: AgentState) -> AgentState:
     ticker = plan.ticker or _guess_ticker(latest_question)
     if not ticker and plan.company_name:
         ticker = COMPANY_TICKER_MAP.get(plan.company_name.lower())
+
+    if ticker:
+        try:
+            user_id = config.get("configurable", {}).get("user_id", "guest")
+            namespace = ("tickers", user_id)
+            existing = store.get(namespace, ticker)
+            if existing:
+                count = existing.value.get("count", 0) + 1
+                store.put(namespace, ticker, {"ticker": ticker, "count": count})
+            else:
+                store.put(namespace, ticker, {"ticker": ticker, "count": 1})
+        except Exception:
+            pass  # never block the main flow
 
     if not ticker:
         context = "Unable to determine a ticker symbol from the user's request."

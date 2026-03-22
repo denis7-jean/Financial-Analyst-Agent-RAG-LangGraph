@@ -8,7 +8,7 @@
 ![Memory](https://img.shields.io/badge/Memory-MemorySaver_%7C_InMemoryStore-brightgreen)
 
 ## 🎥 Project Demo
-> Four demos showcasing cell-level table extraction, persistent memory, cross-tool synergy, and narrative RAG.
+> Five demos showcasing cell-level table extraction, short-term memory, long-term user memory, cross-tool synergy, and narrative RAG.
 
 ### 1) Core RAG + Precision Math (Cell-Level Extraction)
 **Scenario:** Query Apple's 2024 Form 10-K for exact financial metrics. The agent uses `cell_plan_node` to pre-select exact table cells via rule-assisted row matching before the LLM reads any table, then routes through the deterministic `calculator` tool.
@@ -35,6 +35,12 @@ https://github.com/user-attachments/assets/528b5221-c39d-43ac-8753-536829b88f72
 
 ▶️ Demo:
 https://github.com/user-attachments/assets/4f395ac3-27af-4a0e-8cf3-99aac5e634e7
+
+### 5) Long-Term Memory (Cross-Session User Isolation & Preference Tracking)
+**Scenario:** Demonstrates multi-user state handling with `InMemoryStore`. User "KanyeWest" queries AAPL and MSFT — both are saved to his unique store namespace and shown in the sidebar memory panel. Switching to "KanyeNorth" resets the UI and short-term thread, starting a fresh memory panel that independently tracks NVDA. Confirms zero context bleed between users.
+
+▶️ Demo:
+https://github.com/user-attachments/assets/82f9a761-dd25-406a-bb9b-9c02a5abccb3
 
 ---
 
@@ -144,6 +150,8 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 | "What were Apple's net sales in 2024?" | Retrieve from 10-K | $391,035 ✅ |
 | "How does that compare to 2023?" | Use memory, no re-retrieval | 383,285 from prior context ✅ |
 | "What's the current stock price of AAPL?" | Route to market_node → yfinance | $247.99 ✅ |
+| "What is Apple's stock price?" (as KanyeWest) | Save AAPL to InMemoryStore | AAPL shown in sidebar ✅ |
+| Switch User ID to KanyeNorth | Isolated memory namespace | No tickers remembered ✅ |
 
 ### Interpreting the Results
 
@@ -183,9 +191,11 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 
 ### 5. Persistent Conversational Memory (LangGraph)
 - **Thread-level short-term memory:** Uses `MemorySaver` as the graph checkpointer — every message, retrieval result, and calculator output is persisted per conversation thread, enabling genuine multi-turn context without re-retrieval.
-- **Cross-thread long-term memory:** Uses `InMemoryStore` — architecture is ready for user-level persistent facts across sessions.
+- **Cross-thread long-term memory:** Uses `InMemoryStore` — `market_node` writes queried tickers per `user_id` namespace; `router_node` reads prior tickers to enrich routing context. Each user gets an isolated namespace — zero context bleed between users.
 - **Session isolation:** Each browser session receives a unique `thread_id` (UUID generated via `st.session_state`) — conversations are fully isolated between tabs and users.
 - **Verified behavior:** Follow-up queries like "How does that compare to 2023?" correctly resolve using prior context without triggering a new retrieval call.
+- **New Conversation button:** Resets `thread_id` and clears message history on demand — allows switching user context without restarting the app.
+- **Live memory panel:** Sidebar displays remembered tickers per user with query counts, updated automatically after each agent response.
 
 ---
 
@@ -219,12 +229,24 @@ This project uses **LangSmith** for full-lifecycle observability with a 4-dimens
 │       └── ingestion_summary.json
 ├── src/
 │   ├── config.py                # Centralized env vars and paths
+│   ├── core/
+│   │   ├── state.py             # All Pydantic schemas + AgentState TypedDict
+│   │   └── memory.py            # get_checkpointer() + get_store() factories
+│   ├── nodes/
+│   │   ├── router.py            # router_node, ROUTE_LLM, ticker helpers
+│   │   ├── filing.py            # filing_financial_node, filing_narrative_node, cell_plan_node
+│   │   ├── market_news.py       # market_node (writes tickers to store), news_node
+│   │   ├── math_engine.py       # math_prep_node, calculator_node
+│   │   ├── generator.py         # draft_answer_node
+│   │   └── auditor.py           # financial_audit_node, narrative_audit_node, revision_plan_node
+│   ├── edges/
+│   │   └── conditions.py        # All conditional routing functions
+│   ├── graph/
+│   │   └── graph.py             # Assembly only — imports, wiring, compile
 │   ├── ingestion/
 │   │   └── ingest.py            # Hi-res PDF parsing, chunking, embedding, artifact generation
 │   ├── retrieval/
 │   │   └── retrieval.py         # Multi-stage hybrid retrieval (BM25 + dense + RRF + rerank)
-│   ├── graph/
-│   │   └── graph.py             # LangGraph nodes, routing, cell pipeline, audit, retry
 │   ├── tools/
 │   │   └── tools.py             # search_10k, yfinance_tool, calculator, web_search
 │   └── evaluation/

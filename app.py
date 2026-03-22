@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from src.graph.graph import app
+from src.graph.graph import app, store
 
 # -------------------- Page Config -------------------- #
 st.set_page_config(page_title="Financial Analyst Agent", page_icon="📈")
@@ -36,6 +36,34 @@ with st.sidebar:
         """
     )
 
+    st.markdown("---")
+    st.markdown("**👤 User Identity**")
+    user_id = st.sidebar.text_input(
+        "User ID (for long-term memory)",
+        value="guest",
+        help="Enter a consistent ID to retain memory across sessions."
+    )
+
+    st.markdown("---")
+    if st.sidebar.button("🔄 New Conversation", use_container_width=True):
+        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state["messages"] = []
+        st.rerun()
+
+    st.markdown("---")
+    st.markdown("**🧠 Long-Term Memory**")
+    try:
+        memories = store.search(("tickers", user_id))
+        if memories:
+            st.markdown("Remembered tickers:")
+            for m in memories:
+                st.markdown(f"- **{m.value['ticker']}** "
+                           f"(queried {m.value['count']} time(s))")
+        else:
+            st.markdown("_No tickers remembered yet._")
+    except Exception:
+        st.markdown("_Memory unavailable._")
+
 st.title("Financial Analyst Chat")
 
 
@@ -49,6 +77,7 @@ if "messages" not in st.session_state:
     st.session_state["messages"] = []
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
+st.session_state.user_id = user_id
 
 # -------------------- Display Chat History -------------------- #
 for msg in st.session_state["messages"]:
@@ -73,7 +102,14 @@ if user_input:
     # Optional: visualize agent steps
     status_box = st.status("🤖 Agent is thinking...", state="running")
 
-    for event in app.stream(inputs, stream_mode="values", config={"configurable": {"thread_id": st.session_state.thread_id}}):
+    config = {
+        "configurable": {
+            "thread_id": st.session_state.thread_id,
+            "user_id": st.session_state.user_id,
+        }
+    }
+
+    for event in app.stream(inputs, stream_mode="values", config=config):
         last_msg = event["messages"][-1]
 
         # Tool call visualization
@@ -94,3 +130,4 @@ if user_input:
         st.session_state["messages"].append(ai_msg)
         with st.chat_message("assistant"):
             safe_markdown(final_response)
+        st.rerun()
